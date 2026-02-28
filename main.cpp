@@ -213,6 +213,15 @@ void updateButton(Button* btn) {
     }
 }
 
+bool isImageSupported(char* ext) {
+    return
+        strcmp(ext, ".png") == 0 ||
+        strcmp(ext, ".jpg") == 0 ||
+        strcmp(ext, ".jpeg") == 0 ||
+        strcmp(ext, ".bmp") == 0 ||
+        strcmp(ext, ".gif") == 0;
+}
+
 std::vector<Texture> readImages(char* path){
     std::vector<Texture> images;
     DIR* dir = opendir(path);
@@ -222,7 +231,8 @@ std::vector<Texture> readImages(char* path){
     while (next_dir != NULL) {
         char* file_name = next_dir->d_name;
         char* extension = strchr(file_name, '.');
-        if (next_dir->d_type == DT_REG && extension != NULL && strcmp(extension, ".png") == 0) {
+        bool isValid = isImageSupported(extension);
+        if (next_dir->d_type == DT_REG && extension != NULL && isValid) {
             auto image = LoadTexture(TextFormat("%s/%s", path, file_name));
             images.push_back(image);
         }
@@ -357,7 +367,7 @@ int main(int argc, char *argv[]) {
 
             popupMenu.draw();
 
-            DrawText(TextFormat("ImageMode: %s", image_mode == ImageMode::CENTERED ? "centered" : "scale"), 5, 5, 13, ORANGE);
+            // DrawText(TextFormat("ImageMode: %s", image_mode == ImageMode::CENTERED ? "centered" : "scale"), 5, 5, 13, ORANGE);
         }
         EndDrawing();
     }
