@@ -13,7 +13,7 @@
 void drawBackground() {
     auto w = GetScreenWidth();
     auto h = GetScreenHeight();
-    int i = 0;
+    int i = w % 2 == 0 ? 0 : 1;
     for (int y = 0; y < h; y += GRID_STEP) {
         for (int x = 0; x < w; x += GRID_STEP) {
         auto color = i++ % 2 == 0 ? GetColor(0x181818ff) : GetColor(0x212121ff);
@@ -67,7 +67,6 @@ void MenuItem::draw() {
         return;
     }
     DrawRectangleGradientEx(rect, color, color, color, color);
-    auto text_height = MeasureText(text, 14);
     DrawText(text, rect.x + 5, rect.y, 12, BLACK);
 }
 
@@ -121,7 +120,6 @@ void PopUpMenu::update(float dt) {
 
 void PopUpMenu::draw() {
     if (!visible) return;
-    int padding = 10;
     DrawRectangle(rect.x, rect.y, rect.width, rect.height, GetColor(0xaaaaaaff));
     for (auto child: children) {
         child.draw();
@@ -173,7 +171,8 @@ void PopUpMenu::newSeparator() {
 }
 
 void PopUpMenu::done() {
-    // rect.height -= 20;
+    //auto last = children.end();
+    rect.height -= 1.5;
 }
 
 
@@ -222,8 +221,13 @@ bool isImageSupported(char* ext) {
         strcmp(ext, ".gif") == 0;
 }
 
-std::vector<Texture> readImages(char* path){
-    std::vector<Texture> images;
+struct RenderImage {
+    char* path;
+    Texture2D image;
+};
+
+std::vector<RenderImage> readImages(char* path){
+    std::vector<RenderImage> images;
     DIR* dir = opendir(path);
     if (dir == NULL)
         return images;
@@ -233,8 +237,9 @@ std::vector<Texture> readImages(char* path){
         char* extension = strchr(file_name, '.');
         bool isValid = isImageSupported(extension);
         if (next_dir->d_type == DT_REG && extension != NULL && isValid) {
-            auto image = LoadTexture(TextFormat("%s/%s", path, file_name));
-            images.push_back(image);
+            const char* image_path = TextFormat("%s/%s", path, file_name);
+            auto image = LoadTexture(image_path);
+            images.push_back((RenderImage){.path = strdup(image_path), .image = image});
         }
         next_dir = readdir(dir);;
     }
@@ -243,13 +248,13 @@ std::vector<Texture> readImages(char* path){
     return images;
 }
 
-Rectangle get_dest_rect(ImageMode mode) {
+Rectangle get_dest_rect(ImageMode mode, float scaleFactor) {
     auto w = GetScreenWidth();
     auto h = GetScreenHeight();
 
     switch (mode) {
-    case ImageMode::SCALE: return {0, 0, (float)w, (float)h};
-    case ImageMode::CENTERED: return {(float)w/4, (float)h/4, (float)w/2, (float)h/2};
+    case ImageMode::SCALE: return {0 - scaleFactor * 2, 0 - scaleFactor * 2, w * scaleFactor, h * scaleFactor};
+    case ImageMode::CENTERED: return {(float)w/4 * scaleFactor, (float)h/4 * scaleFactor, w/2 * scaleFactor, h/2 * scaleFactor};
     default: assert(false && "unreachable"); // unreachable
     };
 }
@@ -258,19 +263,22 @@ int main(int argc, char *argv[]) {
 
     InitWindow(600, 400, "rayimage");
     SetTargetFPS(60);
+    SetWindowState(FLAG_WINDOW_RESIZABLE);
 
     char* images_path = (char*)(argc == 0 ? "." : argv[argc - 1]);
     auto images = readImages(images_path);
     size_t images_count = images.size();
     size_t image_index = 0;
 
-    auto goLeft = [&image_index, images_count]() {
+    auto goLeft = [&image_index, images_count, images]() {
+        if (images_count == 0) return;
         if (image_index <= 0)
         image_index = images_count - 1;
         else image_index--;
     };
 
     auto goRight = [&image_index, images_count]() {
+        if (images_count == 0) return;
         image_index++;
         image_index %= images_count;
     };
@@ -297,6 +305,21 @@ int main(int argc, char *argv[]) {
         .minWidth = 30,
         .minHeight = 35,
         .onClick = goRight
+    };
+
+    bool show_about = false;
+    auto okButton = (Button){
+        .text = "Ok",
+        .fontSize = 20,
+        .bg = GetColor(0x181818ff),
+        .fg = RED,
+        .x = GetScreenWidth() - seekLeft.x - 30 * 2,
+        .y = GetScreenHeight() / 2,
+        .minWidth = 30,
+        .minHeight = 35,
+        .onClick = [&show_about]() {
+            show_about = false;
+        }
     };
 
     PopUpMenu popupMenu;
@@ -326,45 +349,176 @@ int main(int argc, char *argv[]) {
     popupMenu.newMenuItem("Go Left (<<)", goLeft);
     popupMenu.newMenuItem("Go Right (>>)", goRight);
 
+    float rotation = 0;
+    float rotation_factor = 10;
     popupMenu.newSeparator();
+    popupMenu.newMenuItem("Rotate +10deg", [&rotation, rotation_factor]() {
+        rotation += rotation_factor;
+        rotation = (int)rotation % 360;
+    });
+    popupMenu.newMenuItem("Rotate -10deg", [&rotation, rotation_factor]() {
+        rotation -= rotation_factor;
+        if (rotation < 0)
+            rotation = 360 - rotation;
+    });
+    popupMenu.newMenuItem("Reset Rotation", [&rotation]() {
+        rotation = 0;
+    });
+    popupMenu.newSeparator();
+
     popupMenu.newMenuItem("Configure", goLeft);
+
+    float scaleFactor = 1.0;
+    popupMenu.newSeparator();
+    popupMenu.newMenuItem("Zoom In (+)", [&scaleFactor]() {
+        scaleFactor += 0.1;
+    });
+    popupMenu.newMenuItem("Zoom Out (-)", [&scaleFactor]() {
+        scaleFactor -= 0.1;
+    });
+    popupMenu.newMenuItem("Reset Zoom", [&scaleFactor]() {
+        scaleFactor = 1.0f;
+    });
+
     popupMenu.newSeparator();
 
-    popupMenu.newMenuItem("About", goLeft);
-    popupMenu.newMenuItem("License", goRight);
+    bool grid_view = false;
+    popupMenu.newMenuItem("Toggle Grid View", [&grid_view]() {
+        grid_view = !grid_view;
+    });
 
     popupMenu.newSeparator();
-    popupMenu.newMenuItem("Exit", []() {});
 
-    while (!WindowShouldClose()) {
+    popupMenu.newMenuItem("Help", goRight);
+
+    popupMenu.newMenuItem("About", [&show_about]() {
+        show_about = true;
+    });
+
+    bool is_running = true;
+    popupMenu.newSeparator();
+    popupMenu.newMenuItem("Exit", [&is_running]() {
+        is_running = false;
+    });
+
+    while (is_running) {
         auto w = GetScreenWidth();
         auto h = GetScreenHeight();
-        updateButton(&seekLeft);
-        updateButton(&seekRight);
+
+        if (!grid_view) {
+            updateButton(&seekLeft);
+            updateButton(&seekRight);
+            seekRight.x = GetScreenWidth() - seekLeft.x - 30 * 2,
+            seekRight.y = h / 2;
+            seekLeft.y = h / 2;
+        }
+
+        if (show_about)  {
+            updateButton(&okButton);
+        }
         popupMenu.update(GetFrameTime());
 
         BeginDrawing();
         {
             drawBackground();
 
-            if (images_count > 0) {
-                auto image = images[image_index];
-                DrawTexturePro(
-                    image,
-                    {0, 0, (float)image.width, (float)image.height},
-                    get_dest_rect(image_mode),
-                    {0, 0},
-                    0,
-                    WHITE
-                );
+            if (show_about) {
+                auto rect = get_dest_rect(ImageMode::CENTERED, 1.0f);
+
+                rect.x = w /2 - rect.width / 2;
+                if (rect.width > 250) rect.width = 250;
+                if (rect.height > 250) rect.height = 250;
+                DrawRectanglePro(rect, {0, 0}, 0, GetColor(0x2626262ff));
+
+                int font_size = 20;
+                char* about_header = "About Ryi";
+                int text_height = MeasureText(about_header, font_size);
+                int text_len = strlen(about_header);
+                int y = rect.y + text_height * 0.1;
+                DrawText("About Ryi", rect.x + rect.width / 2 - text_len * 6, y, font_size, WHITE);
+
+                int x = rect.x + 20;
+                y += 20;
+
+                DrawText("App Name    : Raylib Image Viewer", x, y, 12, WHITE);
+                y += 20;
+                DrawText("Short Name  : Ryi", x, y, 12, WHITE);
+                y += 20;
+                DrawText("Developer   : Gama Sibusiso", x, y, 12, WHITE);
+                y += 20;
+                DrawText("Git Repo    : Todo", x, y, 12, WHITE);
+                y += 20;
+                DrawText("License     : GPLV3", x, y, 12, WHITE);
+                y += 20;
+                DrawText("Build Date  : TODO", x, y, 12, WHITE);
+
+
+                okButton.x = rect.x + rect.width / 2;
+                okButton.y = rect.y + rect.height - 40;
+                okButton.minHeight = 20;
+
+
+
+                drawButton(okButton);
+                if (CheckCollisionPointRec(GetMousePosition(), rect)) {
+                    DrawRectangleLinesEx(rect, 1, ORANGE);
+                }
+            } else if (grid_view) {
+                int i = 0;
+                int grid_size = w / 10;
+
+                if (images_count > 0) {
+                    for (int y = 0; y < h; y += 150) {
+                        for (int x = 0; x < w; x += 150) {
+                            if (i == images.size() - 1)
+                                goto _out;
+
+                            int index = i++;
+                            auto image_path = images[index].path;
+                            auto image = images[index].image;
+                            auto rect = (Rectangle) {(float)x, (float)y, 150, 150};
+                            DrawTexturePro(
+                                image,
+                                {0, 0, (float)image.width, (float)image.height},
+                                rect,
+                                {0, 0},
+                                rotation,
+                                WHITE
+                            );
+
+                            if (CheckCollisionPointRec(GetMousePosition(), rect)) {
+                                DrawRectanglePro({(float)x, (float)y, 150, 150}, {0,0}, rotation, ORANGE);
+                                DrawText(TextFormat("w: %d, h: %d", image.width, image.height), w - 120, h - 60, 14, WHITE);
+                                DrawText(TextFormat("path: %s", image_path), 20, h - 60, 14, WHITE);
+                                if (IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_MIDDLE_BUTTON)) {
+                                    image_index = index;
+                                    grid_view = !grid_view;
+                                }
+                            }
+                            if (index == image_index && rotation == 0) {
+                                DrawRectangleLinesEx({(float)x, (float)y, 150, 150}, 1, ORANGE);
+                            }
+                        }
+                    }
+
+                    _out:
+                }
+            } else {
+                if (images_count > 0) {
+                    auto image = images[image_index].image;
+                    DrawTexturePro(
+                        image,
+                        {0, 0, (float)image.width, (float)image.height},
+                        get_dest_rect(image_mode, scaleFactor),
+                        {0, 0},
+                        rotation,
+                        WHITE
+                    );
+                }
+
+                drawButton(seekLeft);
+                drawButton(seekRight);
             }
-
-            seekRight.x = GetScreenWidth() - seekLeft.x - 30 * 2,
-            seekRight.y = h / 2;
-            seekLeft.y = h / 2;
-            drawButton(seekLeft);
-            drawButton(seekRight);
-
             popupMenu.draw();
 
             // DrawText(TextFormat("ImageMode: %s", image_mode == ImageMode::CENTERED ? "centered" : "scale"), 5, 5, 13, ORANGE);
@@ -372,4 +526,10 @@ int main(int argc, char *argv[]) {
         EndDrawing();
     }
 
+    for (auto& image: images) {
+        UnloadTexture(image.image);
+        free(image.path);
+    }
+
+    return 0;
 }
