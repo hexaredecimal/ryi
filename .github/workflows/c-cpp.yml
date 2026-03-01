@@ -19,13 +19,15 @@ jobs:
 
       - name: Clone raylib
         run: |
-          git clone https://hexaredecimal:${{ secrets.GITHUB_TOKEN }}@github.com/raylib/raylib.git
+          git clone https://github.com/raysan5/raylib.git
           cd raylib
           mkdir build
           cd build
           cmake ..
           make
           sudo make install
+          cd ..
+          cd ..
 
       - name: Build your app
         run: cc nob.c -o nob
