@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <raylib.h>
@@ -8,20 +7,53 @@
 #include <assert.h>
 #include <math.h>
 #include <vector>
+#include <fstream>
+#include <string>
 
 #include "tinyfiledialogs.h"
 #include "license.h"
 #include "build.h"
 
-#define GRID_STEP 20
+// Added for configuration management
+struct AppConfig {
+    int gridStep = 20;
+    int defaultMode = 2; // 1: SCALE, 2: CENTERED
+} config;
+
+// Added to handle config file I/O
+void handleConfig() {
+    const char* fileName = "config.txt";
+    std::ifstream infile(fileName);
+    
+    if (!infile.good()) {
+        std::ofstream outfile(fileName);
+        if (outfile.is_open()) {
+            outfile << "gridStep=20\n";
+            outfile << "defaultMode=2\n";
+            outfile.close();
+        }
+    } else {
+        std::string line;
+        while (std::getline(infile, line)) {
+            if (line.find("gridStep=") == 0) {
+                try { config.gridStep = std::stoi(line.substr(9)); } catch(...) {}
+            } else if (line.find("defaultMode=") == 0) {
+                try { config.defaultMode = std::stoi(line.substr(12)); } catch(...) {}
+            }
+        }
+        infile.close();
+    }
+}
 
 void drawBackground() {
     auto w = GetScreenWidth();
     auto h = GetScreenHeight();
-    for (int y = 0; y < h; y += GRID_STEP) {
-        for (int x = 0; x < w; x += GRID_STEP) {
-            auto color = ((x / GRID_STEP) + (y / GRID_STEP)) % 2 == 0 ? GetColor(0x181818ff) : GetColor(0x212121ff);
-            DrawRectangle(x, y, GRID_STEP, GRID_STEP, color);
+    // Use dynamic gridStep from config
+    int step = config.gridStep > 0 ? config.gridStep : 20;
+    for (int y = 0; y < h; y += step) {
+        for (int x = 0; x < w; x += step) {
+            auto color = ((x / step) + (y / step)) % 2 == 0 ? GetColor(0x181818ff) : GetColor(0x212121ff);
+            DrawRectangle(x, y, step, step, color);
         }
     }
 }
@@ -154,7 +186,7 @@ void PopUpMenu::newMenuItem(char* text, std::function<void()> func) {
 
 void PopUpMenu::newSeparator() {
     MenuItem menuItem;
-    menuItem.text = "";
+    menuItem.text = (char*)"";
     menuItem.color = BLACK;
     menuItem.rect.x = rect.x;
     menuItem.rect.y = rect.height;
@@ -175,7 +207,6 @@ void PopUpMenu::newSeparator() {
 }
 
 void PopUpMenu::done() {
-    //auto last = children.end();
     rect.height -= 1.5;
 }
 
@@ -260,13 +291,13 @@ Rectangle get_dest_rect(ImageMode mode, float scaleFactor) {
     auto h = GetScreenHeight();
 
     switch (mode) {
-    case ImageMode::SCALE: return {0 - scaleFactor * 2, 0 - scaleFactor * 2, w * scaleFactor, h * scaleFactor};
-    case ImageMode::CENTERED: return {(float)w/4 * scaleFactor, (float)h/4 * scaleFactor, w/2 * scaleFactor, h/2 * scaleFactor};
-    default: assert(false && "unreachable"); // unreachable
+    case ImageMode::SCALE: return {0 - scaleFactor * 2, 0 - scaleFactor * 2, (float)w * scaleFactor, (float)h * scaleFactor};
+    case ImageMode::CENTERED: return {(float)w/4 * scaleFactor, (float)h/4 * scaleFactor, (float)w/2 * scaleFactor, (float)h/2 * scaleFactor};
+    default: assert(false && "unreachable");
     };
 }
 
-void open_app_from_url(char* url) {
+void open_app_from_url(const char* url) {
     char command_buffer[255];
 #if defined(_WIN32) || defined(_WIN64)
     snprintf(command_buffer, sizeof(command_buffer), "cmd /c start \"\" \"%s\"", url);
@@ -281,12 +312,14 @@ void open_app_from_url(char* url) {
 }
 
 int main(int argc, char *argv[]) {
+    // Load config before anything else
+    handleConfig();
 
     InitWindow(600, 400, "rayimage");
     SetTargetFPS(60);
     SetWindowState(FLAG_WINDOW_RESIZABLE);
 
-    char* images_path = (char*)(argc == 0 ? "." : argv[argc - 1]);
+    char* images_path = (char*)(argc == 1 ? "." : argv[argc - 1]);
     auto images = readImages(images_path);
     size_t image_index = 0;
 
@@ -304,7 +337,7 @@ int main(int argc, char *argv[]) {
     };
 
     auto seekLeft = (Button){
-        .text = "<<",
+        .text = (char*)"<<",
         .fontSize = 20,
         .bg = GetColor(0x181818ff),
         .fg = RED,
@@ -316,7 +349,7 @@ int main(int argc, char *argv[]) {
     };
 
     auto seekRight = (Button){
-        .text = ">>",
+        .text = (char*)">>",
         .fontSize = 20,
         .bg = GetColor(0x181818ff),
         .fg = RED,
@@ -329,7 +362,7 @@ int main(int argc, char *argv[]) {
 
     bool show_about = false;
     auto okButton = (Button){
-        .text = "Ok",
+        .text = (char*)"Ok",
         .fontSize = 20,
         .bg = GetColor(0x181818ff),
         .fg = RED,
@@ -346,7 +379,7 @@ int main(int argc, char *argv[]) {
     popupMenu.rect = {0,0, 20, 0};
     popupMenu.visible = false;
 
-    popupMenu.newMenuItem("Open Dir", [&images, &image_index]() {
+    popupMenu.newMenuItem((char*)"Open Dir", [&images, &image_index]() {
         char* selected_path = tinyfd_selectFolderDialog("Open Images Folder", NULL);
         if (selected_path == nullptr)
             return;
@@ -363,81 +396,85 @@ int main(int argc, char *argv[]) {
     });
     popupMenu.newSeparator();
 
-    ImageMode image_mode = ImageMode::CENTERED;
+    // Use defaultMode from config
+    ImageMode image_mode = (ImageMode)config.defaultMode;
     popupMenu.newMenuItem(
-        "Scale Image",
+        (char*)"Scale Image",
         [&image_mode]() {
         image_mode = ImageMode::SCALE;
         }
     );
     popupMenu.newMenuItem(
-        "Center Image",
+        (char*)"Center Image",
         [&image_mode]() {
         image_mode = ImageMode::CENTERED;
         }
     );
 
     popupMenu.newSeparator();
-    popupMenu.newMenuItem("Go Left (<<)", goLeft);
-    popupMenu.newMenuItem("Go Right (>>)", goRight);
+    popupMenu.newMenuItem((char*)"Go Left (<<)", goLeft);
+    popupMenu.newMenuItem((char*)"Go Right (>>)", goRight);
 
     float rotation = 0;
     float rotation_factor = 10;
     popupMenu.newSeparator();
-    popupMenu.newMenuItem("Rotate +10deg", [&rotation, rotation_factor]() {
+    popupMenu.newMenuItem((char*)"Rotate +10deg", [&rotation, rotation_factor]() {
         rotation += rotation_factor;
-        rotation = (int)rotation % 360;
+        rotation = (float)((int)rotation % 360);
     });
-    popupMenu.newMenuItem("Rotate -10deg", [&rotation, rotation_factor]() {
+    popupMenu.newMenuItem((char*)"Rotate -10deg", [&rotation, rotation_factor]() {
         rotation -= rotation_factor;
         if (rotation < 0)
             rotation = 360 - rotation;
     });
-    popupMenu.newMenuItem("Reset Rotation", [&rotation]() {
+    popupMenu.newMenuItem((char*)"Reset Rotation", [&rotation]() {
         rotation = 0;
     });
     popupMenu.newSeparator();
 
-    popupMenu.newMenuItem("Configure", goLeft);
+    // Changed to open config file
+    popupMenu.newMenuItem((char*)"Configure", []() {
+        open_app_from_url("config.txt");
+    });
 
     float scaleFactor = 1.0;
     popupMenu.newSeparator();
-    popupMenu.newMenuItem("Zoom In (+)", [&scaleFactor]() {
-        scaleFactor += 0.1;
+    popupMenu.newMenuItem((char*)"Zoom In (+)", [&scaleFactor]() {
+        scaleFactor += 0.1f;
     });
-    popupMenu.newMenuItem("Zoom Out (-)", [&scaleFactor]() {
-        scaleFactor -= 0.1;
+    popupMenu.newMenuItem((char*)"Zoom Out (-)", [&scaleFactor]() {
+        scaleFactor -= 0.1f;
     });
-    popupMenu.newMenuItem("Reset Zoom", [&scaleFactor]() {
+    popupMenu.newMenuItem((char*)"Reset Zoom", [&scaleFactor]() {
         scaleFactor = 1.0f;
     });
 
     popupMenu.newSeparator();
 
     bool grid_view = false;
-    popupMenu.newMenuItem("Toggle Grid View", [&grid_view]() {
+    popupMenu.newMenuItem((char*)"Toggle Grid View", [&grid_view]() {
         grid_view = !grid_view;
     });
 
     popupMenu.newSeparator();
 
-    popupMenu.newMenuItem("Help", []() {
+    popupMenu.newMenuItem((char*)"Help", []() {
         open_app_from_url(__GIT_REPO__);
     });
 
     int scroll_y = GetScreenHeight();
-    popupMenu.newMenuItem("About", [&show_about, &scroll_y]() {
+    popupMenu.newMenuItem((char*)"About", [&show_about, &scroll_y]() {
         show_about = true;
         scroll_y = GetScreenHeight();
     });
 
     bool is_running = true;
     popupMenu.newSeparator();
-    popupMenu.newMenuItem("Exit", [&is_running]() {
+    popupMenu.newMenuItem((char*)"Exit", [&is_running]() {
         is_running = false;
     });
 
-    while (is_running) {
+    while (is_running && !WindowShouldClose()) {
         auto dt = GetFrameTime();
         auto w = GetScreenWidth();
         auto h = GetScreenHeight();
@@ -445,9 +482,9 @@ int main(int argc, char *argv[]) {
         if (!grid_view) {
             updateButton(&seekLeft);
             updateButton(&seekRight);
-            seekRight.x = GetScreenWidth() - seekLeft.x - 30 * 2,
-            seekRight.y = h / 2;
-            seekLeft.y = h / 2;
+            seekRight.x = (float)GetScreenWidth() - seekLeft.x - 30 * 2,
+            seekRight.y = (float)h / 2;
+            seekLeft.y = (float)h / 2;
 
             if (IsKeyPressed(KEY_LEFT))
                 goLeft();
@@ -480,23 +517,21 @@ int main(int argc, char *argv[]) {
 
                 rect.x += rect.width / 8;
 
-                DrawText(__LICENSE__, rect.x - rect.width / 8, scroll_y, 12, GetColor(0x66aaccff));
+                DrawText(__LICENSE__, (int)(rect.x - rect.width / 8), scroll_y, 12, GetColor(0x66aaccff));
                 scroll_y--;
 
                 if (scroll_y >= 10000) scroll_y = h;
-                // if (rect.width > 750) rect.width = 750;
-                // if (rect.height > 350) rect.height = 350;
                 DrawRectanglePro({rect.x + 5, rect.y + 5, rect.width, rect.height}, {0, 0}, 0, BLACK);
                 DrawRectanglePro(rect, {0, 0}, 0, GetColor(0x2626262ff));
 
                 int font_size = 20;
-                char* about_header = "About Ryi";
+                const char* about_header = "About Ryi";
                 int text_height = MeasureText(about_header, font_size);
-                int text_len = strlen(about_header);
-                int y = rect.y + text_height * 0.1;
-                DrawText("About Ryi", rect.x + rect.width / 2 - text_len * 6, y, font_size, WHITE);
+                int text_len = (int)strlen(about_header);
+                int y = (int)(rect.y + text_height * 0.1);
+                DrawText("About Ryi", (int)(rect.x + rect.width / 2 - text_len * 6), y, font_size, WHITE);
 
-                int x = rect.x + 20;
+                int x = (int)(rect.x + 20);
                 y += 20;
 
                 DrawText("App Name      : Raylib Image Viewer", x, y, 12, WHITE);
@@ -517,8 +552,8 @@ int main(int argc, char *argv[]) {
                 y += 20;
                 DrawText(TextFormat("Build Command : %s", __BUILD_COMMAND__), x, y, 12, WHITE);
 
-                okButton.x = rect.x + rect.width / 2;
-                okButton.y = rect.y + rect.height - 40;
+                okButton.x = (int)(rect.x + rect.width / 2);
+                okButton.y = (int)(rect.y + rect.height - 40);
                 okButton.minHeight = 20;
 
                 drawButton(okButton);
@@ -527,20 +562,17 @@ int main(int argc, char *argv[]) {
                 }
             } else if (grid_view) {
                 int i = 0;
-                int grid_size = w / 10;
-
-                Rectangle hovered_rect = {0,0,0,0};
                 int hovered_index = -1;
-                int grid_w = 60 + w / images.size();
-                int grid_h = 60 + h / images.size();
+                Rectangle hovered_rect = {0,0,0,0};
+                int grid_w = 60 + w / (int)images.size();
+                int grid_h = 60 + h / (int)images.size();
                 if (images.size() > 0) {
                     for (int y = 10; y < h; y += grid_h) {
                         for (int x = 10; x < w; x += grid_w) {
-                            if (i == images.size() - 1)
+                            if (i == (int)images.size() - 1)
                                 goto _out;
 
                             int index = i++;
-                            auto image_path = images[index].path;
                             auto image = images[index].image;
                             auto rect = (Rectangle) {(float)x, (float)y, (float)grid_w, (float)grid_h};
                             if ((rect.x + rect.width) > w) {
@@ -575,7 +607,6 @@ int main(int argc, char *argv[]) {
 
                         if (hovered_rect.y < 0) {
                             hovered_rect.y = 0;
-                            // hovered_rect.width += 30;
                             hovered_rect.height -= 30;
                         }
 
@@ -589,11 +620,10 @@ int main(int argc, char *argv[]) {
                             rotation,
                             WHITE
                         );
-                        //DrawRectanglePro(hovered_rect, {0,0}, rotation, ORANGE);
                         DrawText(TextFormat("w: %d, h: %d", image.width, image.height), w - 120, h - 60, 14, RED);
-                        DrawText(TextFormat("path: %s   [%d/%d]", image_path, hovered_index + 1, images.size() - 1), 20, h - 60, 14, RED);
+                        DrawText(TextFormat("path: %s   [%d/%d]", image_path, hovered_index + 1, (int)images.size() - 1), 20, h - 60, 14, RED);
                         if (IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_MIDDLE_BUTTON)) {
-                            image_index = hovered_index;
+                            image_index = (size_t)hovered_index;
                             grid_view = !grid_view;
                         }
 
@@ -625,9 +655,8 @@ int main(int argc, char *argv[]) {
             }
             popupMenu.draw();
 
-            // DrawText(TextFormat("ImageMode: %s", image_mode == ImageMode::CENTERED ? "centered" : "scale"), 5, 5, 13, ORANGE);
-            DrawText(TextFormat("%d/%d", image_index + 1, images.size() - 1), 5, 5, 13, BLACK);
-            DrawText(TextFormat("%d/%d", image_index + 1, images.size() - 1), 6, 6, 13, RED);
+            DrawText(TextFormat("%d/%d", (int)image_index + 1, (int)images.size() - 1), 5, 5, 13, BLACK);
+            DrawText(TextFormat("%d/%d", (int)image_index + 1, (int)images.size() - 1), 6, 6, 13, RED);
         }
         EndDrawing();
     }
@@ -637,5 +666,6 @@ int main(int argc, char *argv[]) {
         free(image.path);
     }
 
+    CloseWindow();
     return 0;
 }
