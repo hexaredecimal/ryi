@@ -1,19 +1,34 @@
-name: C/C++ CI
+name: Build Ryi with nob
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: [main]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: nob compile
-      run: gcc ./nob.c -o nob
-    - name: nob build ryi
-      run: ./nob
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up build environment
+        run: |
+          sudo apt update
+          sudo apt install -y git cmake gcc g++ libglfw3-dev libgl1-mesa-dev libxi-dev libxrandr-dev
+
+      - name: Clone raylib
+        run: |
+          git clone https://github.com/rAYLib/raylib.git
+          cd raylib
+          mkdir build
+          cd build
+          cmake ..
+          make
+          sudo make install
+
+      - name: Build your app
+        run: cc nob.c -o nob
+
+      - name: Run your app
+        run: ./nob
