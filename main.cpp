@@ -11,19 +11,18 @@
 
 #include "tinyfiledialogs.h"
 #include "license.h"
+#include "build.h"
 
 #define GRID_STEP 20
 
 void drawBackground() {
     auto w = GetScreenWidth();
     auto h = GetScreenHeight();
-    int i = w % 2 == 0 ? 0 : 1;
     for (int y = 0; y < h; y += GRID_STEP) {
         for (int x = 0; x < w; x += GRID_STEP) {
-        auto color = i++ % 2 == 0 ? GetColor(0x181818ff) : GetColor(0x212121ff);
-        DrawRectangle(x, y, GRID_STEP, GRID_STEP, color);
+            auto color = ((x / GRID_STEP) + (y / GRID_STEP)) % 2 == 0 ? GetColor(0x181818ff) : GetColor(0x212121ff);
+            DrawRectangle(x, y, GRID_STEP, GRID_STEP, color);
         }
-        i++;
     }
 }
 
@@ -423,8 +422,7 @@ int main(int argc, char *argv[]) {
     popupMenu.newSeparator();
 
     popupMenu.newMenuItem("Help", []() {
-        char* url = "https://github.com";
-        open_app_from_url(url);
+        open_app_from_url(__GIT_REPO__);
     });
 
     int scroll_y = GetScreenHeight();
@@ -480,14 +478,14 @@ int main(int argc, char *argv[]) {
             if (show_about) {
                 auto rect = get_dest_rect(ImageMode::CENTERED, 1.0f);
 
-                rect.x += rect.width / 4;
+                rect.x += rect.width / 8;
 
                 DrawText(__LICENSE__, rect.x - rect.width / 8, scroll_y, 12, GetColor(0x66aaccff));
                 scroll_y--;
 
                 if (scroll_y >= 10000) scroll_y = h;
-                if (rect.width > 250) rect.width = 250;
-                if (rect.height > 250) rect.height = 250;
+                // if (rect.width > 750) rect.width = 750;
+                // if (rect.height > 350) rect.height = 350;
                 DrawRectanglePro({rect.x + 5, rect.y + 5, rect.width, rect.height}, {0, 0}, 0, BLACK);
                 DrawRectanglePro(rect, {0, 0}, 0, GetColor(0x2626262ff));
 
@@ -501,18 +499,23 @@ int main(int argc, char *argv[]) {
                 int x = rect.x + 20;
                 y += 20;
 
-                DrawText("App Name    : Raylib Image Viewer", x, y, 12, WHITE);
+                DrawText("App Name      : Raylib Image Viewer", x, y, 12, WHITE);
                 y += 20;
-                DrawText("Short Name  : Ryi", x, y, 12, WHITE);
+                DrawText("Short Name    : Ryi", x, y, 12, WHITE);
                 y += 20;
-                DrawText("Developer   : Gama Sibusiso", x, y, 12, WHITE);
+                DrawText("Developer     : Gama Sibusiso", x, y, 12, WHITE);
                 y += 20;
-                DrawText("Git Repo    : Todo", x, y, 12, WHITE);
+                DrawText(TextFormat("Git Repo      : %s", __GIT_REPO__), x, y, 12, WHITE);
                 y += 20;
-                DrawText("License     : GPLV3", x, y, 12, WHITE);
+                DrawText("License       : GPLV3", x, y, 12, WHITE);
                 y += 20;
-                DrawText("Build Date  : TODO", x, y, 12, WHITE);
-
+                DrawText(TextFormat("Build Date    : %s", __BUILD_DATE__), x, y, 12, WHITE);
+                y += 20;
+                DrawText(TextFormat("Build By      : %s", __BUILD_BY__), x, y, 12, WHITE);
+                y += 20;
+                DrawText(TextFormat("Build Platform: %s", __BUILD_ON__), x, y, 12, WHITE);
+                y += 20;
+                DrawText(TextFormat("Build Command : %s", __BUILD_COMMAND__), x, y, 12, WHITE);
 
                 okButton.x = rect.x + rect.width / 2;
                 okButton.y = rect.y + rect.height - 40;
@@ -587,8 +590,8 @@ int main(int argc, char *argv[]) {
                             WHITE
                         );
                         //DrawRectanglePro(hovered_rect, {0,0}, rotation, ORANGE);
-                        DrawText(TextFormat("w: %d, h: %d", image.width, image.height), w - 120, h - 60, 14, WHITE);
-                        DrawText(TextFormat("path: %s   [%d/%d]", image_path, hovered_index + 1, images.size() - 1), 20, h - 60, 14, WHITE);
+                        DrawText(TextFormat("w: %d, h: %d", image.width, image.height), w - 120, h - 60, 14, RED);
+                        DrawText(TextFormat("path: %s   [%d/%d]", image_path, hovered_index + 1, images.size() - 1), 20, h - 60, 14, RED);
                         if (IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_MIDDLE_BUTTON)) {
                             image_index = hovered_index;
                             grid_view = !grid_view;
