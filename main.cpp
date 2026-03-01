@@ -1,5 +1,6 @@
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <raylib.h>
 #include <functional>
 #include <dirent.h>
@@ -7,6 +8,8 @@
 #include <assert.h>
 #include <math.h>
 #include <vector>
+
+#include "tinyfiledialogs.h"
 
 #define GRID_STEP 20
 
@@ -120,6 +123,7 @@ void PopUpMenu::update(float dt) {
 
 void PopUpMenu::draw() {
     if (!visible) return;
+    DrawRectangle(rect.x + 5, rect.y + 5, rect.width, rect.height + 5, BLACK);
     DrawRectangle(rect.x, rect.y, rect.width, rect.height, GetColor(0xaaaaaaff));
     for (auto child: children) {
         child.draw();
@@ -182,6 +186,7 @@ void drawButton(Button btn) {
     auto btnW = (float)btn.minWidth;
     auto btnH = (float)btn.minHeight;
     Rectangle rect = {(float) btn.x, (float) btn.y, btnW * w, btnH * h / btn.fontSize};
+    DrawRectanglePro({rect.x + 5, rect.y + 5, rect.width, rect.height}, {0, 0}, 0, BLACK);
     DrawRectanglePro(rect, {0, 0}, 0, btn.bg);
     DrawRectangleLinesEx(rect, 1, btn.fg);
     DrawText(btn.text, rect.x + w + btnW, rect.y + h / btn.fontSize, btn.fontSize, btn.fg);
@@ -259,6 +264,20 @@ Rectangle get_dest_rect(ImageMode mode, float scaleFactor) {
     };
 }
 
+void open_url_in_browser(char* url) {
+    char command_buffer[255];
+#if defined(_WIN32) || defined(_WIN64)
+    snprintf(command_buffer, sizeof(command_buffer), "cmd /c start \"\" \"%s\"", url);
+#elif defined(__APPLE__)
+    snprintf(command_buffer, sizeof(command_buffer), "open \"%s\"", url);
+#elif defined(__linux__) || defined(__unix__) || defined(_POSIX_VERSION)
+    snprintf(command_buffer, sizeof(command_buffer), "xdg-open \"%s\"", url);
+#else
+    #error "Unsupported Operating System"
+#endif
+    system(command_buffer);
+}
+
 int main(int argc, char *argv[]) {
 
     InitWindow(600, 400, "rayimage");
@@ -326,8 +345,21 @@ int main(int argc, char *argv[]) {
     popupMenu.rect = {0,0, 20, 0};
     popupMenu.visible = false;
 
-    popupMenu.newMenuItem("Open Dir", []() {
+    popupMenu.newMenuItem("Open Dir", [&images, &images_count, &image_index]() {
+        char* selected_path = tinyfd_selectFolderDialog("Open Images Folder", NULL);
+        if (selected_path == nullptr)
+            return;
 
+        if (images.size() > 0) {
+            for (auto& image: images) {
+                UnloadTexture(image.image);
+                free(image.path);
+            }
+        }
+        images.clear();
+        images = readImages(selected_path);
+        images_count = images.size();
+        image_index = 0;
     });
     popupMenu.newSeparator();
 
@@ -389,7 +421,10 @@ int main(int argc, char *argv[]) {
 
     popupMenu.newSeparator();
 
-    popupMenu.newMenuItem("Help", goRight);
+    popupMenu.newMenuItem("Help", []() {
+        char* url = "https://github.com";
+        open_url_in_browser(url);
+    });
 
     popupMenu.newMenuItem("About", [&show_about]() {
         show_about = true;
@@ -428,6 +463,7 @@ int main(int argc, char *argv[]) {
                 rect.x = w /2 - rect.width / 2;
                 if (rect.width > 250) rect.width = 250;
                 if (rect.height > 250) rect.height = 250;
+                DrawRectanglePro({rect.x + 5, rect.y + 5, rect.width, rect.height}, {0, 0}, 0, BLACK);
                 DrawRectanglePro(rect, {0, 0}, 0, GetColor(0x2626262ff));
 
                 int font_size = 20;
@@ -506,10 +542,15 @@ int main(int argc, char *argv[]) {
             } else {
                 if (images_count > 0) {
                     auto image = images[image_index].image;
+                    auto rect = get_dest_rect(image_mode, scaleFactor);
+
+                    if (image_mode == ImageMode::CENTERED) {
+                        DrawRectanglePro({rect.x + 5, rect.y + 5, rect.width, rect.height}, {0, 0}, rotation, GetColor(0x000000ee));
+                    }
                     DrawTexturePro(
                         image,
                         {0, 0, (float)image.width, (float)image.height},
-                        get_dest_rect(image_mode, scaleFactor),
+                        rect,
                         {0, 0},
                         rotation,
                         WHITE
