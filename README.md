@@ -1,6 +1,14 @@
 # RYI - Raylib Image Viewer
 > A small image viewer developed using raylib. 
 
+<div align="center">
+
+
+  [![Build Ryi with nob](https://github.com/hexaredecimal/ryi/actions/workflows/c-cpp.yml/badge.svg)](https://github.com/hexaredecimal/ryi/actions/workflows/c-cpp.yml)
+
+
+
+</div>
 
 ### Why?
 - Wanted to see if I can code UI elements (Buttons and Menu Items) from scratch using rects
