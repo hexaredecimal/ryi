@@ -19,7 +19,7 @@ jobs:
 
       - name: Clone raylib
         run: |
-          git clone https://github.com/rAYLib/raylib.git
+          git clone https://hexaredecimal:${{ secrets.GITHUB_TOKEN }}@github.com/raylib/raylib.git
           cd raylib
           mkdir build
           cd build
