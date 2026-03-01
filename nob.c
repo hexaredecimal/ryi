@@ -27,6 +27,7 @@ int main(int argc, char** argv) {
 #endif
 
     nob_sb_appendf(&sb, "#define __BUILD_ON__ \"%s\"\n", os);
+    nob_sb_appendf(&sb, "#define __GIT_REPO__ \"%s\"\n", "https://github.com/hexaredecimal/ryi.git");
 
 
     Nob_Cmd cmd = {0};
