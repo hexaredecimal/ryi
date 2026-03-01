@@ -12,6 +12,7 @@ int main(int argc, char** argv) {
     nob_cmd_append(&cmd, "g++");
     nob_cmd_append(&cmd, "-Wall");
     nob_cmd_append(&cmd, "main.cpp");
+    nob_cmd_append(&cmd, "tinyfiledialogs.c");
     nob_cmd_append(&cmd, "-o");
     nob_cmd_append(&cmd, APP_NAME);
     nob_cmd_append(&cmd, "-lraylib");
