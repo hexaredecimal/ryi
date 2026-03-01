@@ -554,4 +554,4 @@
 "Public License instead of this License.  But first, please read\n"\
 "<http://www.gnu.org/philosophy/why-not-lgpl.html>.\n"\
 
-#endif __LICENSE__
+#endif //__LICENSE__
