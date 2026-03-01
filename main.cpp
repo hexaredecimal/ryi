@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "tinyfiledialogs.h"
+#include "license.h"
 
 #define GRID_STEP 20
 
@@ -218,6 +219,8 @@ void updateButton(Button* btn) {
 }
 
 bool isImageSupported(char* ext) {
+    if (ext == NULL) return false;
+
     return
         strcmp(ext, ".png") == 0 ||
         strcmp(ext, ".jpg") == 0 ||
@@ -264,7 +267,7 @@ Rectangle get_dest_rect(ImageMode mode, float scaleFactor) {
     };
 }
 
-void open_url_in_browser(char* url) {
+void open_app_from_url(char* url) {
     char command_buffer[255];
 #if defined(_WIN32) || defined(_WIN64)
     snprintf(command_buffer, sizeof(command_buffer), "cmd /c start \"\" \"%s\"", url);
@@ -286,20 +289,19 @@ int main(int argc, char *argv[]) {
 
     char* images_path = (char*)(argc == 0 ? "." : argv[argc - 1]);
     auto images = readImages(images_path);
-    size_t images_count = images.size();
     size_t image_index = 0;
 
-    auto goLeft = [&image_index, images_count, images]() {
-        if (images_count == 0) return;
+    auto goLeft = [&image_index, &images]() {
+        if (images.size() == 0) return;
         if (image_index <= 0)
-        image_index = images_count - 1;
+        image_index = images.size() - 1;
         else image_index--;
     };
 
-    auto goRight = [&image_index, images_count]() {
-        if (images_count == 0) return;
+    auto goRight = [&image_index, &images]() {
+        if (images.size() == 0) return;
         image_index++;
-        image_index %= images_count;
+        image_index %= images.size();
     };
 
     auto seekLeft = (Button){
@@ -345,7 +347,7 @@ int main(int argc, char *argv[]) {
     popupMenu.rect = {0,0, 20, 0};
     popupMenu.visible = false;
 
-    popupMenu.newMenuItem("Open Dir", [&images, &images_count, &image_index]() {
+    popupMenu.newMenuItem("Open Dir", [&images, &image_index]() {
         char* selected_path = tinyfd_selectFolderDialog("Open Images Folder", NULL);
         if (selected_path == nullptr)
             return;
@@ -358,7 +360,6 @@ int main(int argc, char *argv[]) {
         }
         images.clear();
         images = readImages(selected_path);
-        images_count = images.size();
         image_index = 0;
     });
     popupMenu.newSeparator();
@@ -423,11 +424,13 @@ int main(int argc, char *argv[]) {
 
     popupMenu.newMenuItem("Help", []() {
         char* url = "https://github.com";
-        open_url_in_browser(url);
+        open_app_from_url(url);
     });
 
-    popupMenu.newMenuItem("About", [&show_about]() {
+    int scroll_y = GetScreenHeight();
+    popupMenu.newMenuItem("About", [&show_about, &scroll_y]() {
         show_about = true;
+        scroll_y = GetScreenHeight();
     });
 
     bool is_running = true;
@@ -437,6 +440,7 @@ int main(int argc, char *argv[]) {
     });
 
     while (is_running) {
+        auto dt = GetFrameTime();
         auto w = GetScreenWidth();
         auto h = GetScreenHeight();
 
@@ -446,12 +450,28 @@ int main(int argc, char *argv[]) {
             seekRight.x = GetScreenWidth() - seekLeft.x - 30 * 2,
             seekRight.y = h / 2;
             seekLeft.y = h / 2;
+
+            if (IsKeyPressed(KEY_LEFT))
+                goLeft();
+
+            if (IsKeyPressed(KEY_RIGHT))
+                goRight();
         }
 
-        if (show_about)  {
+        if (!show_about) {
+            if (IsKeyPressed(KEY_LEFT))
+                goLeft();
+
+            if (IsKeyPressed(KEY_RIGHT))
+                goRight();
+        } else {
             updateButton(&okButton);
         }
-        popupMenu.update(GetFrameTime());
+        popupMenu.update(dt);
+
+        auto mouse_scroll = GetMouseWheelMove();
+        scaleFactor += mouse_scroll * dt;
+
 
         BeginDrawing();
         {
@@ -460,7 +480,12 @@ int main(int argc, char *argv[]) {
             if (show_about) {
                 auto rect = get_dest_rect(ImageMode::CENTERED, 1.0f);
 
-                rect.x = w /2 - rect.width / 2;
+                rect.x += rect.width / 4;
+
+                DrawText(__LICENSE__, rect.x - rect.width / 8, scroll_y, 12, GetColor(0x66aaccff));
+                scroll_y--;
+
+                if (scroll_y >= 10000) scroll_y = h;
                 if (rect.width > 250) rect.width = 250;
                 if (rect.height > 250) rect.height = 250;
                 DrawRectanglePro({rect.x + 5, rect.y + 5, rect.width, rect.height}, {0, 0}, 0, BLACK);
@@ -493,8 +518,6 @@ int main(int argc, char *argv[]) {
                 okButton.y = rect.y + rect.height - 40;
                 okButton.minHeight = 20;
 
-
-
                 drawButton(okButton);
                 if (CheckCollisionPointRec(GetMousePosition(), rect)) {
                     DrawRectangleLinesEx(rect, 1, ORANGE);
@@ -503,44 +526,81 @@ int main(int argc, char *argv[]) {
                 int i = 0;
                 int grid_size = w / 10;
 
-                if (images_count > 0) {
-                    for (int y = 0; y < h; y += 150) {
-                        for (int x = 0; x < w; x += 150) {
+                Rectangle hovered_rect = {0,0,0,0};
+                int hovered_index = -1;
+                int grid_w = 60 + w / images.size();
+                int grid_h = 60 + h / images.size();
+                if (images.size() > 0) {
+                    for (int y = 10; y < h; y += grid_h) {
+                        for (int x = 10; x < w; x += grid_w) {
                             if (i == images.size() - 1)
                                 goto _out;
 
                             int index = i++;
                             auto image_path = images[index].path;
                             auto image = images[index].image;
-                            auto rect = (Rectangle) {(float)x, (float)y, 150, 150};
-                            DrawTexturePro(
-                                image,
-                                {0, 0, (float)image.width, (float)image.height},
-                                rect,
-                                {0, 0},
-                                rotation,
-                                WHITE
-                            );
+                            auto rect = (Rectangle) {(float)x, (float)y, (float)grid_w, (float)grid_h};
+                            if ((rect.x + rect.width) > w) {
+                                i--;
+                                break;
+                            }
 
                             if (CheckCollisionPointRec(GetMousePosition(), rect)) {
-                                DrawRectanglePro({(float)x, (float)y, 150, 150}, {0,0}, rotation, ORANGE);
-                                DrawText(TextFormat("w: %d, h: %d", image.width, image.height), w - 120, h - 60, 14, WHITE);
-                                DrawText(TextFormat("path: %s", image_path), 20, h - 60, 14, WHITE);
-                                if (IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_MIDDLE_BUTTON)) {
-                                    image_index = index;
-                                    grid_view = !grid_view;
-                                }
-                            }
-                            if (index == image_index && rotation == 0) {
-                                DrawRectangleLinesEx({(float)x, (float)y, 150, 150}, 1, ORANGE);
+                                hovered_rect = rect;
+                                hovered_index = index;
+                                continue;
+                            } else {
+                                DrawTexturePro(
+                                    image,
+                                    {0, 0, (float)image.width, (float)image.height},
+                                    rect,
+                                    {0, 0},
+                                    rotation,
+                                    WHITE
+                                );
                             }
                         }
                     }
 
                     _out:
+
+                    if (hovered_index != -1) {
+                        hovered_rect.x -= 30;
+                        hovered_rect.y -= 30;
+                        hovered_rect.width += 30 * 2;
+                        hovered_rect.height += 30 * 2;
+
+                        if (hovered_rect.y < 0) {
+                            hovered_rect.y = 0;
+                            // hovered_rect.width += 30;
+                            hovered_rect.height -= 30;
+                        }
+
+                        auto image = images[hovered_index].image;
+                        auto image_path = images[hovered_index].path;
+                        DrawTexturePro(
+                            image,
+                            {0, 0, (float)image.width, (float)image.height},
+                            hovered_rect,
+                            {0, 0},
+                            rotation,
+                            WHITE
+                        );
+                        //DrawRectanglePro(hovered_rect, {0,0}, rotation, ORANGE);
+                        DrawText(TextFormat("w: %d, h: %d", image.width, image.height), w - 120, h - 60, 14, WHITE);
+                        DrawText(TextFormat("path: %s   [%d/%d]", image_path, hovered_index + 1, images.size() - 1), 20, h - 60, 14, WHITE);
+                        if (IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_MIDDLE_BUTTON)) {
+                            image_index = hovered_index;
+                            grid_view = !grid_view;
+                        }
+
+                        if (rotation == 0) {
+                            DrawRectangleLinesEx(hovered_rect, 1, ORANGE);
+                        }
+                    }
                 }
             } else {
-                if (images_count > 0) {
+                if (images.size() > 0) {
                     auto image = images[image_index].image;
                     auto rect = get_dest_rect(image_mode, scaleFactor);
 
@@ -563,6 +623,8 @@ int main(int argc, char *argv[]) {
             popupMenu.draw();
 
             // DrawText(TextFormat("ImageMode: %s", image_mode == ImageMode::CENTERED ? "centered" : "scale"), 5, 5, 13, ORANGE);
+            DrawText(TextFormat("%d/%d", image_index + 1, images.size() - 1), 5, 5, 13, BLACK);
+            DrawText(TextFormat("%d/%d", image_index + 1, images.size() - 1), 6, 6, 13, RED);
         }
         EndDrawing();
     }
