@@ -35,6 +35,11 @@ int main(int argc, char** argv) {
     nob_cmd_append(&cmd, "-Wall");
     nob_cmd_append(&cmd, "-ggdb");
     nob_cmd_append(&cmd, "main.cpp");
+    nob_cmd_append(&cmd, "button.cpp");
+    nob_cmd_append(&cmd, "menuitem.cpp");
+    nob_cmd_append(&cmd, "popupmenu.cpp");
+    nob_cmd_append(&cmd, "renderimage.cpp");
+    nob_cmd_append(&cmd, "ryi.cpp");
     nob_cmd_append(&cmd, "tinyfiledialogs.c");
     nob_cmd_append(&cmd, "-o");
     nob_cmd_append(&cmd, APP_NAME);
@@ -42,12 +47,21 @@ int main(int argc, char** argv) {
 
 
     Nob_String_Builder line_sb = {0};
+
+    nob_sb_appendf(&line_sb, "\"");
     for (int i = 0; i < cmd.count; ++i) {
-        nob_sb_appendf(&line_sb, "%s", cmd.items[i]);
-        if (i < cmd.count - 1)
-            nob_sb_appendf(&line_sb, " ");
+        if (i < 6) {
+            nob_sb_appendf(&line_sb, "%s", cmd.items[i]);
+            if (i < cmd.count - 1)
+                nob_sb_appendf(&line_sb, " ");
+            continue;
+        } if (i == 6) {
+            nob_sb_appendf(&line_sb, "\" \\\n");
+        }
+        nob_sb_appendf(&line_sb, "\"%s\\n\"%s\n", cmd.items[i], i < cmd.count - 1 ? "\\" : "");
+
     }
-    nob_sb_appendf(&sb, "#define __BUILD_COMMAND__ \"%s\"\n", line_sb.items);
+    nob_sb_appendf(&sb, "#define __BUILD_COMMAND__ %s\n", line_sb.items);
     nob_sb_appendf(&sb, "#endif //__BUILD_DATE__\n");
     char* build = "build.h";
     nob_write_entire_file(build, sb.items, sb.count);
