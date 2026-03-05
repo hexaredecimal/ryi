@@ -123,8 +123,12 @@ void Ryi::draw_about() {
     y += 20;
     DrawText(TextFormat("Build Date    : %s", __BUILD_DATE__), x, y, 12, WHITE);
     y += 20;
+
+#if defined(__linux__) || defined(__unix__)
     DrawText(TextFormat("Build By      : %s", __BUILD_BY__), x, y, 12, WHITE);
     y += 20;
+#endif
+
     DrawText(TextFormat("Build Platform: %s", __BUILD_ON__), x, y, 12, WHITE);
     y += 20;
     DrawText(TextFormat("Build Command : %s", __BUILD_COMMAND__), x, y, 12, GREEN);
