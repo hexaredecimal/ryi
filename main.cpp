@@ -219,8 +219,8 @@ int main(int argc, char *argv[]) {
             }
             popupMenu->draw();
 
-            DrawText(TextFormat("%d/%d", Ryi::image_index + 1, images.size() - 1), 5, 5, 13, BLACK);
-            DrawText(TextFormat("%d/%d", Ryi::image_index + 1, images.size() - 1), 6, 6, 13, RED);
+            DrawText(TextFormat("%d/%d", Ryi::image_index + 1, images.size()), 5, 5, 13, BLACK);
+            DrawText(TextFormat("%d/%d", Ryi::image_index + 1, images.size()), 6, 6, 13, RED);
             Ryi::debug.draw();
         }
         EndDrawing();
