@@ -10,7 +10,6 @@
 
 #include <assert.h>
 
-
 int Ryi::image_index = -1;
 bool Ryi::grid_view = false;
 int Ryi::scroll_y = 700;
@@ -85,7 +84,7 @@ void Ryi::load_images(char* path) {
     else {
         Ryi::image_index = -1;
         if (path != NULL && *path == '.')
-            Ryi::debug.report("Failed to load images from current directory");
+            Ryi::debug.report("Failed to load images from current directory (`.`)");
         else
             Ryi::debug.report(TextFormat("Failed to load images from path: `%s`", path));
     }
@@ -98,9 +97,14 @@ std::vector<RenderImage> Ryi::images() {
 
 void Ryi::draw_about() {
     auto rect = Ryi::get_dest_rect(ImageMode::CENTERED, 1.0f);
-    auto h = GetScreenWidth();
+    auto h = GetScreenHeight();
+    auto w = GetScreenWidth();
 
-    rect.x += rect.width / 8;
+    rect.width *= 1.2;
+    rect.height *= 1.03;
+
+    rect.x = (w - rect.width) / 2;
+    rect.y = (h - rect.height) / 2;
 
     DrawText(__LICENSE__, rect.x - rect.width / 8, Ryi::scroll_y, 12, GetColor(0x66aaccff));
     Ryi::scroll_y--;
@@ -141,7 +145,19 @@ void Ryi::draw_about() {
 
     DrawText(TextFormat("Build Platform: %s", __BUILD_ON__), x, y, 12, WHITE);
     y += 20;
-    DrawText(TextFormat("Build Command : %s", __BUILD_COMMAND__), x, y, 12, GREEN);
+    {
+
+        char *command_copy = strdup(__BUILD_COMMAND__);
+        char *line = strtok(command_copy, "\n");
+        while (line != NULL) {
+            if (CheckCollisionPointRec({(float)x, (float)y}, rect) == false) break;
+
+            DrawText(line, x, y, 12, GREEN);
+            y+= 20;
+            line = strtok(NULL, "\n");
+        }
+
+    }
 
     Ryi::dialog_rect = rect;
     if (CheckCollisionPointRec(GetMousePosition(), rect)) {
