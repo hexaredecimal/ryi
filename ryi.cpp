@@ -18,6 +18,7 @@ bool Ryi::is_running = true;
 bool Ryi::show_about = false;
 float Ryi::scale_factor = 1;
 float Ryi::rotation = 0;
+ErrorView Ryi::debug(3.0f);
 ImageMode Ryi::image_mode = ImageMode::SCALE;
 Rectangle Ryi::dialog_rect = {0, 0, 0, 0};
 
@@ -79,6 +80,15 @@ void Ryi::open_app_from_url(char* url) {
 std::vector<RenderImage> Ryi::Ryi::_images;
 void Ryi::load_images(char* path) {
     Ryi::_images = RenderImage::load_images_from_dir(path);
+    if (Ryi::_images.size() > 0)
+        Ryi::image_index = 0;
+    else {
+        Ryi::image_index = -1;
+        if (path != NULL && *path == '.')
+            Ryi::debug.report("Failed to load images from current directory");
+        else
+            Ryi::debug.report(TextFormat("Failed to load images from path: `%s`", path));
+    }
 }
 
 
