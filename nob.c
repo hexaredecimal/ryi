@@ -45,6 +45,7 @@ int main(int argc, char** argv) {
     nob_cmd_append(&cmd, "-o");
     nob_cmd_append(&cmd, APP_NAME);
     nob_cmd_append(&cmd, "-lraylib");
+    nob_cmd_append(&cmd, "-lcurl");
 
 
     Nob_String_Builder line_sb = {0};
