@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "ryi.h"
 #include "button.h"
 #include "popupmenu.h"
@@ -165,11 +164,6 @@ int main(int argc, char *argv[]) {
     popupMenu->menu_item("Exit", []() {
         Ryi::is_running = false;
     });
-
-
-    float timer = 3.0f;       // Total duration in seconds
-    float fadeStart = 1.0f;   // Start fading when 1 second is left
-    float alpha = 1.0f;
 
     while (Ryi::is_running) {
         auto dt = GetFrameTime();
