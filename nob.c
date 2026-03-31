@@ -51,12 +51,12 @@ int main(int argc, char** argv) {
 
     nob_sb_appendf(&line_sb, "\"");
     for (int i = 0; i < cmd.count; ++i) {
-        if (i < 6) {
+        if (i < 4) {
             nob_sb_appendf(&line_sb, "%s", cmd.items[i]);
             if (i < cmd.count - 1)
                 nob_sb_appendf(&line_sb, " ");
             continue;
-        } if (i == 6) {
+        } if (i == 4) {
             nob_sb_appendf(&line_sb, "\" \\\n");
         }
         nob_sb_appendf(&line_sb, "\"%s\\n\"%s\n", cmd.items[i], i < cmd.count - 1 ? "\\" : "");
