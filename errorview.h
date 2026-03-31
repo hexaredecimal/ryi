@@ -7,7 +7,7 @@ struct ErrorView {
 public:
 
     ErrorView(float duration):
-        duration(duration), message(nullptr), pos({0,0}) {}
+        duration(duration), pos({0,0}), message(nullptr) {}
 
     void update(float dt) {
         if (this->message == nullptr)
