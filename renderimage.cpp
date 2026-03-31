@@ -6,7 +6,7 @@
 #include "ryi.h"
 
 
-std::vector<RenderImage> RenderImage::load_images_from_dir(char* path){
+std::vector<RenderImage> RenderImage::load_images_from_dir(const char* path){
     std::vector<RenderImage> images;
     DIR* dir = opendir(path);
     if (dir == NULL)

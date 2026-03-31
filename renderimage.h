@@ -22,7 +22,7 @@ struct RenderImage {
     char* path;
     Texture2D image;
 
-    static std::vector<RenderImage> load_images_from_dir(char*);
+    static std::vector<RenderImage> load_images_from_dir(const char*);
 };
 
 #endif // RENDERIMAGE_H
