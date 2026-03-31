@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <curl/curl.h>
 
 #include "ryi.h"
 
@@ -25,7 +26,11 @@ void Ryi::init(char* path) {
     InitWindow(600, 400, "Ryi");
     SetTargetFPS(60);
     SetWindowState(FLAG_WINDOW_RESIZABLE);
-    Ryi::load_images(path);
+
+    if (Ryi::is_url(path))
+        Ryi::load_from_url(path);
+    else
+        Ryi::load_images(path);
 }
 
 void Ryi::draw_background() {
@@ -77,7 +82,7 @@ void Ryi::open_app_from_url(char* url) {
 }
 
 std::vector<RenderImage> Ryi::Ryi::_images;
-void Ryi::load_images(char* path) {
+void Ryi::load_images(const char* path) {
     Ryi::_images = RenderImage::load_images_from_dir(path);
     if (Ryi::_images.size() > 0)
         Ryi::image_index = 0;
@@ -90,6 +95,49 @@ void Ryi::load_images(char* path) {
     }
 }
 
+int write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
+    size_t written = fwrite(ptr, size, nmemb, stream);
+    return written;
+}
+
+void Ryi::load_from_url(const char* url) {
+
+    char temp_path[] = "/tmp/imag.png";
+
+    FILE *fp = fopen(temp_path, "wb");
+
+    printf("Temporary file created at: %s\n", temp_path);
+    CURL* curl = curl_easy_init();
+    if (curl) {
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+        CURLcode res = curl_easy_perform(curl);
+
+        if(res == CURLE_OK) {
+            printf("Image downloaded to temp storage successfully.\n");
+        } else {
+            Ryi::debug.report("Failed fetching image");
+            fclose(fp);
+        }
+        curl_easy_cleanup(curl);
+    }
+
+    fclose(fp);
+
+    auto image = LoadTexture(temp_path);
+    Ryi::_images.push_back((RenderImage){.path = strdup(url), .image = image});
+    Ryi::image_index = 0;
+}
+
+
+bool Ryi::is_url(const char* url) {
+    return url != NULL && (strncmp(url, "http://", 7) == 0 ||
+           strncmp(url, "https://", 8) == 0 ||
+           strncmp(url, "ftp://", 6) == 0);
+}
 
 std::vector<RenderImage> Ryi::images() {
     return Ryi::_images;

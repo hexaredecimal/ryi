@@ -25,7 +25,9 @@ public:
     static bool is_image_supported(char*);
     static Rectangle get_dest_rect(ImageMode, float);
     static void open_app_from_url(char*);
-    static void load_images(char*);
+    static void load_images(const char*);
+    static void load_from_url(const char* url);
+    static bool is_url(const char* url);
     static std::vector<RenderImage> images();
 
     static void draw_about();
