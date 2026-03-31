@@ -100,13 +100,13 @@ void Ryi::draw_about() {
     auto h = GetScreenHeight();
     auto w = GetScreenWidth();
 
-    rect.width *= 1.2;
-    rect.height *= 1.03;
+    rect.width *= 1.3;
+    rect.height *= h <= 600 ? 1.03 : 1.2;
 
     rect.x = (w - rect.width) / 2;
     rect.y = (h - rect.height) / 2;
 
-    DrawText(__LICENSE__, rect.x - rect.width / 8, Ryi::scroll_y, 12, GetColor(0x66aaccff));
+    DrawText(__LICENSE__, w <= 600 ? rect.x - rect.width/12: rect.x + rect.width / 4, Ryi::scroll_y, 12, GetColor(0x66aaccff));
     Ryi::scroll_y--;
 
     if (Ryi::scroll_y >= 10000) Ryi::scroll_y = h;
@@ -147,12 +147,19 @@ void Ryi::draw_about() {
     y += 20;
     {
 
+        bool is_first = true;
         char *command_copy = strdup(__BUILD_COMMAND__);
         char *line = strtok(command_copy, "\n");
         while (line != NULL) {
             if (CheckCollisionPointRec({(float)x, (float)y}, rect) == false) break;
 
-            DrawText(line, x, y, 12, GREEN);
+            if (is_first) {
+                DrawText(TextFormat("Build Command: %s", line), x, y, 12, GREEN);
+                is_first = false;
+            } else {
+                DrawText("+", x, y, 12, BLUE);
+                DrawText(TextFormat("\t%s", line), x + 20, y, 12, GREEN);
+            }
             y+= 20;
             line = strtok(NULL, "\n");
         }
