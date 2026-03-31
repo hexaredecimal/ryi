@@ -93,7 +93,6 @@ int main(int argc, char *argv[]) {
         images.clear();
         Ryi::load_images(selected_path);
         images = Ryi::images();
-        Ryi::image_index = 0;
     });
     popupMenu->separator();
 
@@ -145,8 +144,9 @@ int main(int argc, char *argv[]) {
 
     popupMenu->separator();
 
-    popupMenu->menu_item("Toggle Grid View", []() {
-        Ryi::grid_view = !Ryi::grid_view;
+    popupMenu->menu_item("Toggle Grid View", [&images]() {
+        if (images.size() > 0)
+            Ryi::grid_view = !Ryi::grid_view;
     });
 
     popupMenu->separator();
@@ -166,6 +166,11 @@ int main(int argc, char *argv[]) {
         Ryi::is_running = false;
     });
 
+
+    float timer = 3.0f;       // Total duration in seconds
+    float fadeStart = 1.0f;   // Start fading when 1 second is left
+    float alpha = 1.0f;
+
     while (Ryi::is_running) {
         auto dt = GetFrameTime();
         auto h = GetScreenHeight();
@@ -182,6 +187,7 @@ int main(int argc, char *argv[]) {
 
             if (IsKeyPressed(KEY_RIGHT))
                 goRight();
+
         }
 
         if (!Ryi::show_about) {
@@ -196,6 +202,7 @@ int main(int argc, char *argv[]) {
             okButton = okButton->size(30, 20) ;
             okButton->update();
         }
+        Ryi::debug.update(dt);
         popupMenu->update();
 
         auto mouse_scroll = GetMouseWheelMove();
@@ -220,6 +227,7 @@ int main(int argc, char *argv[]) {
 
             DrawText(TextFormat("%d/%d", Ryi::image_index + 1, images.size() - 1), 5, 5, 13, BLACK);
             DrawText(TextFormat("%d/%d", Ryi::image_index + 1, images.size() - 1), 6, 6, 13, RED);
+            Ryi::debug.draw();
         }
         EndDrawing();
     }
