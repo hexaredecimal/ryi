@@ -13,8 +13,7 @@
 #include <raylib.h>
 #include "imagemode.h"
 #include "renderimage.h"
-#include "button.h"
-
+#include "errorview.h"
 /*
  * Ryi struct
  * Holds all important app routines, including the render logic for different screens.
@@ -42,6 +41,7 @@ public:
     static Rectangle dialog_rect;
     static ImageMode image_mode;
     static int scroll_y;
+    static ErrorView debug;
 private:
     static std::vector<RenderImage> _images;
 };
