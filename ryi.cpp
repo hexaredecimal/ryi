@@ -248,22 +248,25 @@ void Ryi::draw_grid_view() {
 
     Rectangle hovered_rect = {0,0,0,0};
     int hovered_index = -1;
-    int grid_w = 60 + w / Ryi::_images.size();
-    int grid_h = 60 + h / Ryi::_images.size();
+    int max_images = Ryi::_images.size() == 1 ? 24 : Ryi::_images.size();
+    int grid_w =  60 + w / max_images;
+    int grid_h = 60 + h / max_images;
     if (Ryi::_images.size() > 0) {
         for (int y = 10; y < h; y += grid_h) {
             for (int x = 10; x < w; x += grid_w) {
-                if ((size_t)i == Ryi::_images.size() - 1)
+                if (i >= max_images)
                     goto _out;
 
-                int index = i++;
-                auto image = Ryi::_images[index].image;
+                int index = i++ % Ryi::_images.size();
+                auto img = Ryi::_images[index];
                 auto rect = (Rectangle) {(float)x, (float)y, (float)grid_w, (float)grid_h};
+                // printf("rect.x: %2f, rect.width: %2f w: %2d, %f\n", rect.x, rect.width, w, rect.x + rect.width);
                 if ((rect.x + rect.width) > w) {
                     i--;
                     break;
                 }
 
+                auto image = img.image;
                 if (CheckCollisionPointRec(GetMousePosition(), rect)) {
                     hovered_rect = rect;
                     hovered_index = index;
