@@ -19,6 +19,7 @@ std::vector<RenderImage> RenderImage::load_images_from_dir(const char* path){
         if (next_dir->d_type == DT_REG && extension != NULL && isValid) {
             const char* image_path = TextFormat("%s/%s", path, file_name);
             auto image = LoadTexture(image_path);
+            SetTextureFilter(image, TEXTURE_FILTER_ANISOTROPIC_16X);
             images.push_back((RenderImage){.path = strdup(image_path), .image = image});
         }
         next_dir = readdir(dir);;
