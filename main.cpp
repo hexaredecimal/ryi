@@ -14,11 +14,13 @@ void print_usage() {
     printf("ryi [options]\n");
     printf("options:\n");
     printf("\t<dir>       \t- The directory to load images from (Optional)\n");
+    printf("\t<url>       \t- The url to load images from (Optional)\n");
     printf("\t-h          \t- Print this help infomation\n");
     printf("\n");
     printf("examples:\n");
-    printf("\tryi          \t- Running the executable without any args in a folder with images will cause the it to read all images\n");
-    printf("\tryi images   \t- Loads all images in dir\n");
+    printf("\tryi           \t- Running the executable without any args in a folder with images will cause the it to read all images\n");
+    printf("\tryi images    \t- Loads all images in dir\n");
+    printf("\tryi https://* \t- Loads an image from the url\n");
 }
 
 int main(int argc, char *argv[]) {
