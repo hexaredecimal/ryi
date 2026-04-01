@@ -60,9 +60,29 @@ Rectangle Ryi::get_dest_rect(ImageMode mode, float scaleFactor) {
     auto w = GetScreenWidth();
     auto h = GetScreenHeight();
 
+    float scaledW = w * scaleFactor;
+    float scaledH = h * scaleFactor;
+    auto mouse = GetMousePosition();
     switch (mode) {
-    case ImageMode::SCALE: return {0 - scaleFactor * 2, 0 - scaleFactor * 2, w * scaleFactor, h * scaleFactor};
-    case ImageMode::CENTERED: return {(float)w/4 * scaleFactor, (float)h/4 * scaleFactor, w/2 * scaleFactor, h/2 * scaleFactor};
+    case ImageMode::SCALE: {
+
+        if (scaleFactor == 1.0) {
+            return {0 - scaleFactor * 2, 0 - scaleFactor * 2, w * scaleFactor, h * scaleFactor};
+        }
+
+        float offsetX = mouse.x - (mouse.x / w) * scaledW;
+        float offsetY = mouse.y - (mouse.y / h) * scaledH;
+        return {offsetX, offsetY, scaledW, scaledH};
+    }
+    case ImageMode::CENTERED: {
+        if (scaleFactor == 1.0) {
+            return {(float)w/4 * scaleFactor, (float)h/4 * scaleFactor, w/2 * scaleFactor, h/2 * scaleFactor};
+        }
+
+        float offsetX = mouse.x + (mouse.x / w/2) - scaledW/12;
+        float offsetY = mouse.y + (mouse.y / h/2) - scaledH/12;
+        return {offsetX, offsetY, scaledW/2, scaledH/2};
+    }
     default: assert(false && "unreachable"); // unreachable
     };
 }
@@ -128,6 +148,7 @@ void Ryi::load_from_url(const char* url) {
     fclose(fp);
 
     auto image = LoadTexture(temp_path);
+    SetTextureFilter(image, TEXTURE_FILTER_ANISOTROPIC_16X);
     Ryi::_images.push_back((RenderImage){.path = strdup(url), .image = image});
     Ryi::image_index = 0;
 }
