@@ -120,6 +120,12 @@ void Ryi::load_from_url(const char* url) {
 
     FILE *fp = fopen(temp_path, "wb");
 
+    if (fp == NULL) {
+        Ryi::debug.report("Failed creating tmp file");
+        return;
+    }
+
+
     printf("Temporary file created at: %s\n", temp_path);
     CURL* curl = curl_easy_init();
     if (curl) {
@@ -132,6 +138,7 @@ void Ryi::load_from_url(const char* url) {
 
         if(res == CURLE_OK) {
             printf("Image downloaded to temp storage successfully.\n");
+            fclose(fp);
         } else {
             Ryi::debug.report("Failed fetching image");
             fclose(fp);
@@ -139,7 +146,6 @@ void Ryi::load_from_url(const char* url) {
         curl_easy_cleanup(curl);
     }
 
-    fclose(fp);
 
     auto image = LoadTexture(temp_path);
     SetTextureFilter(image, TEXTURE_FILTER_ANISOTROPIC_16X);
