@@ -1,5 +1,5 @@
-# RYI - Raylib Image Viewer
-> A small image viewer developed using raylib. 
+# RYI - Render Yet another Image
+> A small image viewer inspired by feh
 
 <div align="center">
 
@@ -10,12 +10,26 @@
 
 </div>
 
-### Why?
-- Wanted to see if I can code UI elements (Buttons and Menu Items) from scratch using rects
-- Wanted to learn about the complexities behind developing UI elements. 
-- Had time on my hands
+### Features
+- [x] Grid gallery
+- [x] Image view
+- [x] Open file dialog
+- [x] Directory traversal using `opeddir`
+- [x] Loading image from url
+- [x] Popup menu
+- [ ] Configuration
+- [x] Zoom (in/out and reset)
+- [x] Image Rotation
 
-### Build Process
+
+### Build
+#### Requirements
+- gcc/clang
+- nob.h (included)
+- libcurl
+- raylib
+
+#### Build Process
 - Clone the repo:
 ```sh
 git clone https://github.com/hexaredecimal/ryi.git
