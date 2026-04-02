@@ -65,23 +65,17 @@ Rectangle Ryi::get_dest_rect(ImageMode mode, float scaleFactor) {
     auto mouse = GetMousePosition();
     switch (mode) {
     case ImageMode::SCALE: {
-
-        if (scaleFactor == 1.0) {
-            return {0 - scaleFactor * 2, 0 - scaleFactor * 2, w * scaleFactor, h * scaleFactor};
-        }
-
         float offsetX = mouse.x - (mouse.x / w) * scaledW;
         float offsetY = mouse.y - (mouse.y / h) * scaledH;
         return {offsetX, offsetY, scaledW, scaledH};
     }
     case ImageMode::CENTERED: {
-        if (scaleFactor == 1.0) {
-            return {(float)w/4 * scaleFactor, (float)h/4 * scaleFactor, w/2 * scaleFactor, h/2 * scaleFactor};
-        }
+        float offsetX = ((mouse.x / w) - 0.5f) * scaleFactor * 4;
+        float offsetY = ((mouse.y / h) - 0.5f) * scaleFactor * 4;
 
-        float offsetX = mouse.x + (mouse.x / w/2) - scaledW/12;
-        float offsetY = mouse.y + (mouse.y / h/2) - scaledH/12;
-        return {offsetX, offsetY, scaledW/2, scaledH/2};
+        float centeredX = (w - scaledW / 2) / 2.0f + offsetX;
+        float centeredY = (h - scaledH / 2) / 2.0f + offsetY;
+        return {centeredX, centeredY, scaledW / 2, scaledH / 2};
     }
     default: assert(false && "unreachable"); // unreachable
     };
@@ -170,7 +164,7 @@ void Ryi::draw_about() {
     auto w = GetScreenWidth();
 
     rect.width *= 1.3;
-    rect.height *= h <= 600 ? 1.03 : 1.2;
+    rect.height *= h <= 600 ? 1.13 : 1.2;
 
     rect.x = (w - rect.width) / 2;
     rect.y = (h - rect.height) / 2;
@@ -195,6 +189,8 @@ void Ryi::draw_about() {
     y += 20;
 
     DrawText("App Name      : Raylib Image Viewer", x, y, 12, WHITE);
+    y += 20;
+    DrawText(TextFormat("App Version   : %s", __RYI_VERSION__), x, y, 12, WHITE);
     y += 20;
     DrawText("Short Name    : Ryi", x, y, 12, WHITE);
     y += 20;
@@ -248,9 +244,10 @@ void Ryi::draw_grid_view() {
 
     Rectangle hovered_rect = {0,0,0,0};
     int hovered_index = -1;
-    int max_images = Ryi::_images.size() == 1 ? 24 : Ryi::_images.size();
+    int max_images = Ryi::_images.size() == 1 ? 12 : Ryi::_images.size();
     int grid_w =  60 + w / max_images;
     int grid_h = 60 + h / max_images;
+    float alpha = 1.0f;
     if (Ryi::_images.size() > 0) {
         for (int y = 10; y < h; y += grid_h) {
             for (int x = 10; x < w; x += grid_w) {
@@ -272,14 +269,17 @@ void Ryi::draw_grid_view() {
                     hovered_index = index;
                     continue;
                 } else {
+                    Color color = Ryi::_images.size() > 1 || i - 1 == 0 ? WHITE : Fade(RED, alpha);
                     DrawTexturePro(
                         image,
                         {0, 0, (float)image.width, (float)image.height},
                         rect,
                         {0, 0},
                         rotation,
-                        WHITE
+                        color
                     );
+
+                    alpha -= 2/max_images - 1;
                 }
             }
 
