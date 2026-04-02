@@ -7,6 +7,7 @@
 #include "nob.h"
 
 #define APP_NAME "ryi"
+#define APP_VERSION "0.9.1"
 
 int main(int argc, char** argv) {
     NOB_GO_REBUILD_URSELF(argc, argv);
@@ -27,6 +28,7 @@ int main(int argc, char** argv) {
 #endif
 
     nob_sb_appendf(&sb, "#define __BUILD_ON__ \"%s\"\n", os);
+    nob_sb_appendf(&sb, "#define __RYI_VERSION__ \"%s\"\n", APP_VERSION);
     nob_sb_appendf(&sb, "#define __GIT_REPO__ \"%s\"\n", "https://github.com/hexaredecimal/ryi.git");
 
 
